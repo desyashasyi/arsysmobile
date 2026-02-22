@@ -9,6 +9,27 @@ class ApplicantDetailPage extends ConsumerWidget {
 
   const ApplicantDetailPage({super.key, required this.participantId});
 
+  Future<void> _showAlertDialog(BuildContext context, String title, String message, {VoidCallback? onOk}) {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                onOk?.call();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final defenseDetailAsync = ref.watch(preDefenseParticipantDetailProvider(participantId));
@@ -128,8 +149,12 @@ class ApplicantDetailPage extends ConsumerWidget {
   }
 
   Widget _buildScoreButtons(BuildContext context, WidgetRef ref, int participantId, bool isSupervisor, bool isExaminer, bool isExaminerPresent, Map<String, dynamic> data) {
+    final myScoreColorName = data['my_score_color'] as String?;
+    final cardColor = myScoreColorName == 'success' ? Colors.green[100] : null;
+
     return Card(
       elevation: 2,
+      color: cardColor,
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Row(
@@ -145,10 +170,9 @@ class ApplicantDetailPage extends ConsumerWidget {
                 onPressed: () => _showSubmitScoreSheet(context, ref, participantId, data),
                 child: const Text('Examiner Score'),
               ),
-            TextButton.icon(
+            ElevatedButton(
               onPressed: () => _showScoreGuideSheet(context, ref),
-              icon: const Icon(Icons.info_outline),
-              label: const Text('Scoring Guide'),
+              child: const Text('Scoring Guide'),
             ),
           ],
         ),
@@ -263,9 +287,7 @@ class ApplicantDetailPage extends ConsumerWidget {
                     ref.invalidate(preDefenseParticipantDetailProvider(participantId));
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to update presence: $e')),
-                      );
+                      _showAlertDialog(context, 'Error', 'Failed to update presence: $e');
                     }
                   }
                 },
@@ -293,6 +315,26 @@ class _AddExaminerSheetState extends ConsumerState<AddExaminerSheet> {
   bool _isLoading = false;
   dynamic _selectedStaff;
 
+  Future<void> _showAlertDialog(BuildContext context, String title, String message) {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _searchStaff(String query) async {
     if (query.isEmpty) {
       setState(() {
@@ -313,6 +355,9 @@ class _AddExaminerSheetState extends ConsumerState<AddExaminerSheet> {
       setState(() {
         _isLoading = false;
       });
+      if (mounted) {
+        _showAlertDialog(context, 'Error', 'Failed to search staff: $e');
+      }
     }
   }
 
@@ -325,7 +370,9 @@ class _AddExaminerSheetState extends ConsumerState<AddExaminerSheet> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      // Handle error
+      if (mounted) {
+        _showAlertDialog(context, 'Error', 'Failed to add examiner: $e');
+      }
     }
   }
 
@@ -406,25 +453,46 @@ class _SubmitScoreSheetState extends ConsumerState<SubmitScoreSheet> {
     _remarkController.text = widget.data['my_remark'] ?? '';
   }
 
+  Future<void> _showAlertDialog(BuildContext context, String title, String message, {VoidCallback? onOk}) {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                onOk?.call();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _submitScore() async {
     final score = int.tryParse(_scoreController.text);
     final remark = _remarkController.text;
     if (score == null || score < 1 || score > 400) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid score between 1 and 400')),
-      );
+      _showAlertDialog(context, 'Invalid Score', 'Please enter a valid score between 1 and 400');
       return;
     }
     try {
       await ref.read(preDefenseRepositoryProvider).submitScore(widget.participantId, score, remark: remark);
       ref.invalidate(preDefenseParticipantDetailProvider(widget.participantId));
       if (mounted) {
-        Navigator.of(context).pop();
+        _showAlertDialog(context, 'Success', 'Score submitted successfully', onOk: () {
+          Navigator.of(context).pop();
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit score: $e')),
-      );
+      if (mounted) {
+        _showAlertDialog(context, 'Error', 'Failed to submit score: $e');
+      }
     }
   }
 
