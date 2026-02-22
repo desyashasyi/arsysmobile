@@ -32,7 +32,7 @@ class ApplicantDetailPage extends ConsumerWidget {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0), // Increased bottom padding
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -66,11 +66,35 @@ class ApplicantDetailPage extends ConsumerWidget {
                       isSupervisor,
                     ),
                   ),
+                  if (isSupervisor)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _showAddExaminerSheet(context, ref, participantId),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Examiner'),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showAddExaminerSheet(BuildContext context, WidgetRef ref, int participantId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.green[100],
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: AddExaminerSheet(participantId: participantId),
       ),
     );
   }
@@ -192,6 +216,114 @@ class ApplicantDetailPage extends ConsumerWidget {
                 Icons.check_circle,
                 color: isPresent ? Colors.green : Colors.grey,
               ),
+      ),
+    );
+  }
+}
+
+class AddExaminerSheet extends ConsumerStatefulWidget {
+  final int participantId;
+  const AddExaminerSheet({super.key, required this.participantId});
+
+  @override
+  ConsumerState<AddExaminerSheet> createState() => _AddExaminerSheetState();
+}
+
+class _AddExaminerSheetState extends ConsumerState<AddExaminerSheet> {
+  final _searchController = TextEditingController();
+  List<dynamic> _searchResults = [];
+  bool _isLoading = false;
+  dynamic _selectedStaff;
+
+  void _searchStaff(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+      });
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final results = await ref.read(preDefenseRepositoryProvider).searchStaff(query);
+      setState(() {
+        _searchResults = results;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      // Handle error
+    }
+  }
+
+  void _addExaminer() async {
+    if (_selectedStaff == null) return;
+    try {
+      await ref.read(preDefenseRepositoryProvider).addExaminer(widget.participantId, _selectedStaff['id']);
+      ref.invalidate(preDefenseParticipantDetailProvider(widget.participantId));
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 60.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Add Examiner', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'Search by staff code',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: _searchStaff,
+            ),
+            if (_isLoading)
+              const LinearProgressIndicator(),
+            if (_searchResults.isNotEmpty)
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  itemCount: _searchResults.length,
+                  itemBuilder: (context, index) {
+                    final staff = _searchResults[index];
+                    return ListTile(
+                      title: Text('${staff['first_name']} ${staff['last_name']}'),
+                      subtitle: Text(staff['code']),
+                      onTap: () {
+                        setState(() {
+                          _selectedStaff = staff;
+                          _searchController.text = '${staff['first_name']} ${staff['last_name']}';
+                          _searchResults = [];
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _selectedStaff != null ? _addExaminer : null,
+                child: const Text('Add'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

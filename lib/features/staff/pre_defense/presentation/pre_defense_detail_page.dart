@@ -5,12 +5,10 @@ import 'package:arsys/features/staff/pre_defense/application/pre_defense_provide
 
 class PreDefenseDetailPage extends ConsumerWidget {
   final int eventId;
-  final String eventName;
 
   const PreDefenseDetailPage({
     super.key,
     required this.eventId,
-    required this.eventName,
   });
 
   @override
@@ -18,7 +16,7 @@ class PreDefenseDetailPage extends ConsumerWidget {
     final participantsAsync = ref.watch(preDefenseParticipantsProvider(eventId));
 
     return Scaffold(
-      appBar: AppBar(title: Text(eventName)),
+      appBar: AppBar(title: const Text('Pre Defense Participants')),
       body: participantsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
