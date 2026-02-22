@@ -67,4 +67,24 @@ class PreDefenseRepository {
       throw Exception('Failed to add examiner');
     }
   }
+
+  Future<List<dynamic>> getScoreGuide() async {
+    final response = await _authService.get('/staff/pre-defense/score-guide');
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load score guide');
+    }
+  }
+
+  Future<void> submitScore(int participantId, int score, {String? remark}) async {
+    final body = <String, dynamic>{'score': score};
+    if (remark != null) {
+      body['remark'] = remark;
+    }
+    final response = await _authService.post('/staff/pre-defense/participant/$participantId/score', body);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to submit score');
+    }
+  }
 }

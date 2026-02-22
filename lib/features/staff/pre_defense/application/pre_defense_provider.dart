@@ -15,3 +15,8 @@ final preDefenseParticipantDetailProvider = FutureProvider.autoDispose.family<Ma
   final repository = ref.watch(preDefenseRepositoryProvider);
   return repository.getParticipantDetails(participantId);
 });
+
+final scoreGuideProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final repository = ref.watch(preDefenseRepositoryProvider);
+  return repository.getScoreGuide();
+});

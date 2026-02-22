@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:arsys/features/staff/pre_defense/application/pre_defense_provider.dart';
 import 'package:arsys/features/staff/pre_defense/data/pre_defense_repository.dart';
@@ -25,6 +26,8 @@ class ApplicantDetailPage extends ConsumerWidget {
           final examiners = (participant['defense_examiner'] as List?)?.where((e) => e != null).toList() ?? [];
           
           final isSupervisor = data['is_supervisor'] as bool? ?? false;
+          final isExaminer = data['is_examiner'] as bool? ?? false;
+          final isExaminerPresent = data['is_examiner_present'] as bool? ?? false;
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -32,7 +35,7 @@ class ApplicantDetailPage extends ConsumerWidget {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0), // Increased bottom padding
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 120.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -59,6 +62,7 @@ class ApplicantDetailPage extends ConsumerWidget {
                     (e) => _buildExaminerTile(
                       context,
                       ref,
+                      participantId,
                       e['id'],
                       e['code'] ?? 'N/A',
                       e['name'] ?? 'Unknown Examiner',
@@ -78,6 +82,9 @@ class ApplicantDetailPage extends ConsumerWidget {
                         ),
                       ),
                     ),
+                  const SizedBox(height: 20),
+                  _buildSectionTitle('Submit Score'),
+                  _buildScoreButtons(context, ref, participantId, isSupervisor, isExaminer, isExaminerPresent, data),
                 ],
               ),
             ),
@@ -95,6 +102,56 @@ class ApplicantDetailPage extends ConsumerWidget {
       builder: (context) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: AddExaminerSheet(participantId: participantId),
+      ),
+    );
+  }
+
+  void _showSubmitScoreSheet(BuildContext context, WidgetRef ref, int participantId, Map<String, dynamic> data) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.green[100],
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SubmitScoreSheet(participantId: participantId, data: data),
+      ),
+    );
+  }
+
+  void _showScoreGuideSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.green[100],
+      builder: (context) => const ScoreGuideSheet(),
+    );
+  }
+
+  Widget _buildScoreButtons(BuildContext context, WidgetRef ref, int participantId, bool isSupervisor, bool isExaminer, bool isExaminerPresent, Map<String, dynamic> data) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            if (isSupervisor)
+              ElevatedButton(
+                onPressed: () => _showSubmitScoreSheet(context, ref, participantId, data),
+                child: const Text('Supervisor Score'),
+              ),
+            if (isExaminer && isExaminerPresent)
+              ElevatedButton(
+                onPressed: () => _showSubmitScoreSheet(context, ref, participantId, data),
+                child: const Text('Examiner Score'),
+              ),
+            TextButton.icon(
+              onPressed: () => _showScoreGuideSheet(context, ref),
+              icon: const Icon(Icons.info_outline),
+              label: const Text('Scoring Guide'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -184,6 +241,7 @@ class ApplicantDetailPage extends ConsumerWidget {
   Widget _buildExaminerTile(
     BuildContext context,
     WidgetRef ref,
+    int participantId,
     int examinerId,
     String code,
     String name,
@@ -255,7 +313,6 @@ class _AddExaminerSheetState extends ConsumerState<AddExaminerSheet> {
       setState(() {
         _isLoading = false;
       });
-      // Handle error
     }
   }
 
@@ -325,6 +382,149 @@ class _AddExaminerSheetState extends ConsumerState<AddExaminerSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class SubmitScoreSheet extends ConsumerStatefulWidget {
+  final int participantId;
+  final Map<String, dynamic> data;
+  const SubmitScoreSheet({super.key, required this.participantId, required this.data});
+
+  @override
+  ConsumerState<SubmitScoreSheet> createState() => _SubmitScoreSheetState();
+}
+
+class _SubmitScoreSheetState extends ConsumerState<SubmitScoreSheet> {
+  final _scoreController = TextEditingController();
+  final _remarkController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scoreController.text = widget.data['my_score']?.toString() ?? '';
+    _remarkController.text = widget.data['my_remark'] ?? '';
+  }
+
+  void _submitScore() async {
+    final score = int.tryParse(_scoreController.text);
+    final remark = _remarkController.text;
+    if (score == null || score < 1 || score > 400) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid score between 1 and 400')),
+      );
+      return;
+    }
+    try {
+      await ref.read(preDefenseRepositoryProvider).submitScore(widget.participantId, score, remark: remark);
+      ref.invalidate(preDefenseParticipantDetailProvider(widget.participantId));
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit score: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 60.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Submit Score and Remark', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _scoreController,
+              decoration: const InputDecoration(
+                labelText: 'Score (1-400)',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(3),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _remarkController,
+              decoration: const InputDecoration(
+                labelText: 'Remark',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _submitScore,
+                child: const Text('Save'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ScoreGuideSheet extends ConsumerWidget {
+  const ScoreGuideSheet({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scoreGuideAsync = ref.watch(scoreGuideProvider);
+    return scoreGuideAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+      data: (scoreGuide) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 60.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Scoring Guide', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Table(
+                  border: TableBorder.all(color: Colors.grey),
+                  columnWidths: const {
+                    0: FlexColumnWidth(1.5),
+                    1: FlexColumnWidth(2),
+                    2: FlexColumnWidth(3),
+                  },
+                  children: [
+                    const TableRow(
+                      decoration: BoxDecoration(color: Colors.black12),
+                      children: [
+                        Padding(padding: EdgeInsets.all(8.0), child: Text('Code', style: TextStyle(fontWeight: FontWeight.bold))),
+                        Padding(padding: EdgeInsets.all(8.0), child: Text('Value', style: TextStyle(fontWeight: FontWeight.bold))),
+                        Padding(padding: EdgeInsets.all(8.0), child: Text('Description', style: TextStyle(fontWeight: FontWeight.bold))),
+                      ],
+                    ),
+                    ...scoreGuide.map((score) {
+                      return TableRow(
+                        children: [
+                          Padding(padding: const EdgeInsets.all(8.0), child: Text(score['code'])),
+                          Padding(padding: const EdgeInsets.all(8.0), child: Text(score['value'])),
+                          Padding(padding: const EdgeInsets.all(8.0), child: Text(score['description'])),
+                        ],
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
