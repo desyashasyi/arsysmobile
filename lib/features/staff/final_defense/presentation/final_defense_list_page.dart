@@ -50,9 +50,12 @@ class FinalDefenseListPage extends ConsumerWidget {
                     leading: const Icon(Icons.event, color: Colors.blueGrey),
                     title: Row(
                       children: [
-                        Text(
-                          (ev['event_code'] ?? 'Event ${ev['id'] ?? index}').toUpperCase(),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        Flexible(
+                          child: Text(
+                            '${ev['event_code'] ?? 'Event ${ev['id'] ?? index}'} ${ev['name'] ?? ''}'.toUpperCase(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         if (((ev['program_code'] ?? '') as String).isNotEmpty || ((ev['program_abbrev'] ?? '') as String).isNotEmpty)
