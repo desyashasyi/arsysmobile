@@ -10,3 +10,8 @@ final finalDefenseDetailProvider = FutureProvider.autoDispose.family<Map<String,
   final repository = ref.watch(finalDefenseRepositoryProvider);
   return repository.getRooms(eventId);
 });
+
+final finalDefenseRoomDetailProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, int>((ref, roomId) async {
+  final repository = ref.watch(finalDefenseRepositoryProvider);
+  return repository.getRoomDetail(roomId);
+});

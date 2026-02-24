@@ -86,8 +86,9 @@ class FinalDefenseListPage extends ConsumerWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       final id = ev['id'] as int?;
-                      if (id != null) {
-                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => FinalDefenseDetailPage(eventId: id)));
+                      final eventCode = ev['event_code'] as String?;
+                      if (id != null && eventCode != null) {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => FinalDefenseDetailPage(eventId: id, eventCode: eventCode)));
                       }
                     },
                   ),
