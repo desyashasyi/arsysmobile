@@ -22,17 +22,26 @@ class FinalDefenseRepository {
     }
   }
 
-  Future<Map<String, dynamic>> getDetail(int eventId) async {
-    final response = await _authService.get('/staff/final-defense/$eventId/detail');
+  Future<Map<String, dynamic>> getRooms(int eventId) async {
+    final response = await _authService.get('/staff/final-defense/$eventId/rooms');
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load final-defense rooms');
+    }
+  }
+
+  Future<Map<String, dynamic>> getRoomDetail(int roomId) async {
+    final response = await _authService.get('/staff/final-defense/room/$roomId');
     if (response.statusCode == 200) {
       final body = json.decode(response.body);
       if (body['success'] == true) {
         return body['data'] as Map<String, dynamic>;
       } else {
-        throw Exception(body['message'] ?? 'Failed to load event detail');
+        throw Exception(body['message'] ?? 'Failed to load room detail');
       }
     } else {
-      throw Exception('Failed to load event detail (${response.statusCode})');
+      throw Exception('Failed to load room detail (${response.statusCode})');
     }
   }
 }

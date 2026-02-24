@@ -51,7 +51,7 @@ class FinalDefenseListPage extends ConsumerWidget {
                     title: Row(
                       children: [
                         Text(
-                          (ev['event_id_string'] ?? 'Event ${ev['id'] ?? index}').toUpperCase(),
+                          (ev['event_code'] ?? 'Event ${ev['id'] ?? index}').toUpperCase(),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         const SizedBox(width: 8),
