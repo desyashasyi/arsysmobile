@@ -17,22 +17,31 @@ class FinalDefenseDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Failed to load rooms: $err')),
         data: (data) {
-          final rooms = data['data'] as List<dynamic>? ?? [];
-          if (rooms.isEmpty) {
+          final allRooms = data['data'] as List<dynamic>? ?? [];
+          if (allRooms.isEmpty) {
             return RefreshIndicator(
               onRefresh: () => ref.refresh(finalDefenseDetailProvider(eventId).future),
               child: const Center(child: Text('No rooms found for you in this event.'))
             );
           }
+
+          final examinerRooms = allRooms.where((r) => r['is_examiner_or_moderator'] == true).toList();
+          final supervisorRooms = allRooms.where((r) => (r['supervised_applicant_ids'] as List).isNotEmpty).toList();
+
           return RefreshIndicator(
             onRefresh: () => ref.refresh(finalDefenseDetailProvider(eventId).future),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: rooms.length,
-              itemBuilder: (context, index) {
-                final room = rooms[index] as Map<String, dynamic>;
-                return _RoomDetailCard(room: room);
-              },
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                if (examinerRooms.isNotEmpty)
+                  ...examinerRooms.map((room) => _ExaminerRoomCard(room: room as Map<String, dynamic>)),
+                if (supervisorRooms.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text("Supervised Students", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ...supervisorRooms.map((room) => _SupervisorRoomCard(room: room as Map<String, dynamic>)),
+                ]
+              ],
             ),
           );
         },
@@ -41,79 +50,170 @@ class FinalDefenseDetailPage extends ConsumerWidget {
   }
 }
 
-class _RoomDetailCard extends ConsumerWidget {
+class _ExaminerRoomCard extends StatelessWidget {
   final Map<String, dynamic> room;
-
-  const _RoomDetailCard({required this.room});
+  const _ExaminerRoomCard({required this.room});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final roomId = room['id'] as int;
-    final roomDetailAsync = ref.watch(finalDefenseRoomDetailProvider(roomId));
+  Widget build(BuildContext context) {
+    final moderator = room['moderator'] as Map<String, dynamic>?;
+    final examiners = room['examiners'] as List<dynamic>? ?? [];
+    final applicants = room['applicants'] as List<dynamic>? ?? [];
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Colors.blueGrey),
-                const SizedBox(width: 8),
-                Expanded(child: Text(room['room_name'] ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold))),
-                const SizedBox(width: 16),
-                const Icon(Icons.access_time, size: 16, color: Colors.blueGrey),
-                const SizedBox(width: 8),
-                Text(room['session_time'] ?? 'N/A'),
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCard(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.blueGrey),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(room['room_name'] ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold))),
+                  const SizedBox(width: 16),
+                  const Icon(Icons.access_time, size: 16, color: Colors.blueGrey),
+                  const SizedBox(width: 8),
+                  Text(room['session_time'] ?? 'N/A'),
+                ],
+              ),
+            ]
+          ),
+          _buildCard(
+            title: 'Examiners and Moderator',
+            children: [
+              if (moderator != null) ...[
+                _buildPersonRow(
+                  name: '${moderator['name']} (${moderator['code']})',
+                  isPresent: true, // Moderator is always present
+                  isModerator: true,
+                ),
+                const Divider(),
               ],
-            ),
-            const Divider(height: 24),
-            roomDetailAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error: $err')),
-              data: (detailData) {
-                final roomDetail = detailData['room'] as Map<String, dynamic>? ?? {};
-                final moderator = roomDetail['moderator'] as Map<String, dynamic>?;
-                final examiners = roomDetail['examiners'] as List<dynamic>? ?? [];
-                final applicants = roomDetail['applicants'] as List<dynamic>? ?? [];
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (moderator != null) ...[
-                      Row(
-                        children: [
-                          Text('${moderator['name'] ?? ''} (${moderator['code'] ?? ''})'),
-                          const SizedBox(width: 8),
-                          Chip(
-                            label: const Text('Moderator'),
-                            backgroundColor: Colors.blue.shade100,
-                            padding: EdgeInsets.zero,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    const Text('Examiners:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...examiners.map((e) {
-                      final examiner = e as Map<String, dynamic>;
-                      return Text('- ${examiner['name'] ?? ''} (${examiner['code'] ?? ''})');
-                    }),
-                    const SizedBox(height: 8),
-                    const Text('Applicants:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ...applicants.map((a) {
-                      final applicant = a as Map<String, dynamic>;
-                      return Text('- ${applicant['student_name'] ?? ''} (${applicant['student_nim'] ?? ''})');
-                    }),
-                  ],
+              ...examiners.map((e) {
+                final examiner = e as Map<String, dynamic>;
+                return _buildPersonRow(
+                  name: '${examiner['name']} (${examiner['code']})',
+                  isPresent: examiner['is_present'] ?? false,
                 );
-              },
-            ),
-          ],
-        ),
+              }).toList(),
+            ]
+          ),
+          _buildCard(
+            title: 'Participants',
+            children: applicants.map((a) {
+              final applicant = a as Map<String, dynamic>;
+              return _buildParticipantRow(
+                name: '${applicant['student_name']} (${applicant['student_nim']})',
+                onPressed: () { /* TODO: Implement Score submission */ },
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _SupervisorRoomCard extends StatelessWidget {
+  final Map<String, dynamic> room;
+  const _SupervisorRoomCard({required this.room});
+
+  @override
+  Widget build(BuildContext context) {
+    final supervisedApplicantIds = (room['supervised_applicant_ids'] as List).cast<int>();
+    final applicants = (room['applicants'] as List<dynamic>? ?? [])
+        .where((a) => supervisedApplicantIds.contains(a['id']))
+        .toList();
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        children: [
+          _buildCard(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.blueGrey),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(room['room_name'] ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold))),
+                  const SizedBox(width: 16),
+                  const Icon(Icons.access_time, size: 16, color: Colors.blueGrey),
+                  const SizedBox(width: 8),
+                  Text(room['session_time'] ?? 'N/A'),
+                ],
+              ),
+            ]
+          ),
+          _buildCard(
+            children: applicants.map((a) {
+              final applicant = a as Map<String, dynamic>;
+              return _buildParticipantRow(
+                name: '${applicant['student_name']} (${applicant['student_nim']})',
+                onPressed: () { /* TODO: Implement Score submission */ },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _buildCard({String? title, required List<Widget> children}) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (title != null) ...[
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+        ],
+        ...children,
+      ],
+    ),
+  );
+}
+
+Widget _buildPersonRow({required String name, required bool isPresent, bool isModerator = false}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4.0),
+    child: Row(
+      children: [
+        Expanded(child: Text(name)),
+        if (isModerator) ...[
+          const SizedBox(width: 8),
+          Chip(
+            label: const Text('Moderator'),
+            backgroundColor: Colors.blue.shade100,
+            padding: EdgeInsets.zero,
+          ),
+        ],
+        const SizedBox(width: 8),
+        Icon(
+          Icons.check_circle,
+          color: isPresent ? Colors.green : Colors.grey.shade300,
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildParticipantRow({required String name, required VoidCallback onPressed}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4.0),
+    child: Row(
+      children: [
+        Expanded(child: Text(name)),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: onPressed,
+          child: const Text('Score'),
+        ),
+      ],
+    ),
+  );
 }
