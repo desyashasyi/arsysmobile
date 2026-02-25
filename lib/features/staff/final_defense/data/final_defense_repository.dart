@@ -37,8 +37,18 @@ class FinalDefenseRepository {
       {'new_moderator_id': newModeratorId},
     );
     if (response.statusCode != 200) {
-      final error = json.decode(response.body);
-      throw Exception(error['message'] ?? 'Failed to switch moderator');
+      try {
+        final error = json.decode(response.body);
+        final message = error['message'] ?? 'An unknown error occurred.';
+        if (error.containsKey('errors')) {
+          final errors = error['errors'] as Map<String, dynamic>;
+          final firstError = errors.values.first as List<dynamic>;
+          throw Exception(firstError.first ?? message);
+        }
+        throw Exception(message);
+      } catch (e) {
+        throw Exception('Failed to switch moderator. Please try again.');
+      }
     }
   }
 
@@ -48,8 +58,12 @@ class FinalDefenseRepository {
       {},
     );
     if (response.statusCode != 200) {
-      final error = json.decode(response.body);
-      throw Exception(error['message'] ?? 'Failed to update presence');
+      try {
+        final error = json.decode(response.body);
+        throw Exception(error['message'] ?? 'Failed to update presence');
+      } catch (e) {
+        throw Exception('Failed to update presence. Invalid error format.');
+      }
     }
   }
 
