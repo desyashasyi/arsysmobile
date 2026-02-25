@@ -31,6 +31,28 @@ class FinalDefenseRepository {
     }
   }
 
+  Future<void> switchModerator(int roomId, int newModeratorId) async {
+    final response = await _authService.post(
+      '/staff/final-defense/room/$roomId/switch-moderator',
+      {'new_moderator_id': newModeratorId},
+    );
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body);
+      throw Exception(error['message'] ?? 'Failed to switch moderator');
+    }
+  }
+
+  Future<void> toggleExaminerPresence(int roomId, int examinerId) async {
+    final response = await _authService.post(
+      '/staff/final-defense/room/$roomId/examiner/$examinerId/presence',
+      {},
+    );
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body);
+      throw Exception(error['message'] ?? 'Failed to update presence');
+    }
+  }
+
   Future<Map<String, dynamic>> getRoomDetail(int roomId) async {
     final response = await _authService.get('/staff/final-defense/room/$roomId');
     if (response.statusCode == 200) {

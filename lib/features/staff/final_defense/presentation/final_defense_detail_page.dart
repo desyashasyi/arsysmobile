@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:arsys/features/staff/final_defense/application/final_defense_provider.dart';
+import 'package:arsys/features/staff/final_defense/data/final_defense_repository.dart';
 
 class FinalDefenseDetailPage extends ConsumerWidget {
   final int eventId;
@@ -34,7 +35,7 @@ class FinalDefenseDetailPage extends ConsumerWidget {
               padding: const EdgeInsets.all(16.0),
               children: [
                 if (examinerRooms.isNotEmpty)
-                  ...examinerRooms.map((room) => _ExaminerRoomCard(room: room as Map<String, dynamic>)),
+                  ...examinerRooms.map((room) => _ExaminerRoomCard(room: room as Map<String, dynamic>, eventId: eventId)),
                 if (supervisorRooms.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text("Supervised Students", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -50,16 +51,43 @@ class FinalDefenseDetailPage extends ConsumerWidget {
   }
 }
 
-class _ExaminerRoomCard extends StatelessWidget {
+class _ExaminerRoomCard extends ConsumerWidget {
   final Map<String, dynamic> room;
-  const _ExaminerRoomCard({required this.room});
+  final int eventId;
+  const _ExaminerRoomCard({required this.room, required this.eventId});
+
+  Future<void> _showConfirmationDialog(BuildContext context, String title, String content, VoidCallback onConfirm) {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              child: const Text('Confirm'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                onConfirm();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final moderator = room['moderator'] as Map<String, dynamic>?;
     final examiners = room['examiners'] as List<dynamic>? ?? [];
     final applicants = room['applicants'] as List<dynamic>? ?? [];
     final supervisedApplicantIds = (room['supervised_applicant_ids'] as List).cast<int>();
+    final isCurrentUserModerator = room['is_current_user_moderator'] as bool? ?? false;
 
     final moderatorCode = moderator?['code'] as String?;
     final filteredExaminers = examiners.where((examiner) {
@@ -100,9 +128,48 @@ class _ExaminerRoomCard extends StatelessWidget {
               ],
               ...filteredExaminers.map((e) {
                 final examiner = e as Map<String, dynamic>;
+                final staffId = examiner['staff_id'] as int?;
+                final examinerId = examiner['id'] as int?;
+
                 return _buildPersonRow(
                   name: '${examiner['name']} (${examiner['code']})',
                   isPresent: examiner['is_present'] ?? false,
+                  isSwitchable: isCurrentUserModerator && staffId != null,
+                  onSwitch: () {
+                    _showConfirmationDialog(
+                      context,
+                      'Switch Moderator',
+                      'Are you sure you want to make ${examiner['name']} the new moderator?',
+                      () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.showSnackBar(const SnackBar(content: Text('Switching moderator...')));
+                        try {
+                          await ref.read(finalDefenseRepositoryProvider).switchModerator(room['id'], staffId!);
+                          messenger.hideCurrentSnackBar();
+                          messenger.showSnackBar(const SnackBar(content: Text('Moderator switched successfully! Refreshing...'), backgroundColor: Colors.green));
+                          ref.refresh(finalDefenseDetailProvider(eventId));
+                        } catch (e) {
+                          messenger.hideCurrentSnackBar();
+                          messenger.showSnackBar(SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red));
+                        }
+                      },
+                    );
+                  },
+                  onTogglePresence: isCurrentUserModerator && examinerId != null
+                      ? () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          messenger.showSnackBar(const SnackBar(content: Text('Updating presence...')));
+                          try {
+                            await ref.read(finalDefenseRepositoryProvider).toggleExaminerPresence(room['id'], examinerId);
+                            messenger.hideCurrentSnackBar();
+                            messenger.showSnackBar(const SnackBar(content: Text('Presence updated successfully! Refreshing...'), backgroundColor: Colors.green));
+                            ref.refresh(finalDefenseDetailProvider(eventId));
+                          } catch (e) {
+                            messenger.hideCurrentSnackBar();
+                            messenger.showSnackBar(SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red));
+                          }
+                        }
+                      : null,
                 );
               }).toList(),
             ]
@@ -365,11 +432,26 @@ Widget _buildCard({String? title, required List<Widget> children}) {
   );
 }
 
-Widget _buildPersonRow({required String name, bool isPresent = false, bool isModerator = false}) {
+Widget _buildPersonRow({
+  required String name,
+  bool isPresent = false,
+  bool isModerator = false,
+  bool isSwitchable = false,
+  VoidCallback? onSwitch,
+  VoidCallback? onTogglePresence,
+}) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 4.0),
     child: Row(
       children: [
+        isSwitchable
+            ? IconButton(
+                icon: const Icon(Icons.person),
+                onPressed: onSwitch,
+                tooltip: 'Make Moderator',
+              )
+            : const Icon(Icons.person, color: Colors.grey),
+        const SizedBox(width: 8),
         Expanded(child: Text(name)),
         if (isModerator) ...[
           const SizedBox(width: 8),
@@ -381,10 +463,19 @@ Widget _buildPersonRow({required String name, bool isPresent = false, bool isMod
         ],
         if (!isModerator) ...[
           const SizedBox(width: 8),
-          Icon(
-            Icons.check_circle,
-            color: isPresent ? Colors.green : Colors.grey.shade300,
-          ),
+          onTogglePresence != null
+              ? IconButton(
+                  icon: Icon(
+                    Icons.check_circle,
+                    color: isPresent ? Colors.green : Colors.grey.shade300,
+                  ),
+                  onPressed: onTogglePresence,
+                  tooltip: 'Toggle Presence',
+                )
+              : Icon(
+                  Icons.check_circle,
+                  color: isPresent ? Colors.green : Colors.grey.shade300,
+                ),
         ]
       ],
     ),
@@ -396,6 +487,8 @@ Widget _buildParticipantRow({required String name, required VoidCallback onPress
     padding: const EdgeInsets.symmetric(vertical: 4.0),
     child: Row(
       children: [
+        const Icon(Icons.person, color: Colors.grey),
+        const SizedBox(width: 8),
         Expanded(child: Text(name)),
         if (showScoreButton) ...[
           const SizedBox(width: 8),
