@@ -61,6 +61,13 @@ class _ExaminerRoomCard extends StatelessWidget {
     final applicants = room['applicants'] as List<dynamic>? ?? [];
     final supervisedApplicantIds = (room['supervised_applicant_ids'] as List).cast<int>();
 
+    final moderatorCode = moderator?['code'] as String?;
+    final filteredExaminers = examiners.where((examiner) {
+      final examinerCode = (examiner as Map<String, dynamic>)['code'] as String?;
+      if (moderatorCode == null) return true;
+      return examinerCode != moderatorCode;
+    }).toList();
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -89,9 +96,9 @@ class _ExaminerRoomCard extends StatelessWidget {
                   name: '${moderator['name']} (${moderator['code']})',
                   isModerator: true,
                 ),
-                const Divider(),
+                if (filteredExaminers.isNotEmpty) const Divider(),
               ],
-              ...examiners.map((e) {
+              ...filteredExaminers.map((e) {
                 final examiner = e as Map<String, dynamic>;
                 return _buildPersonRow(
                   name: '${examiner['name']} (${examiner['code']})',
