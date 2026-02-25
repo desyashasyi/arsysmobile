@@ -109,7 +109,7 @@ class _ExaminerRoomCard extends StatelessWidget {
 
               return _buildParticipantRow(
                 name: '${applicant['student_name']} (${applicant['student_nim']})',
-                onPressed: () { /* TODO: Implement Score submission */ },
+                onPressed: () => _showScoreBottomSheet(context, applicantId),
                 showScoreButton: !isSupervised,
               );
             }).toList(),
@@ -153,9 +153,10 @@ class _SupervisorRoomCard extends StatelessWidget {
           _buildCard(
             children: applicants.map((a) {
               final applicant = a as Map<String, dynamic>;
+              final applicantId = applicant['id'] as int;
               return _buildParticipantRow(
                 name: '${applicant['student_name']} (${applicant['student_nim']})',
-                onPressed: () { /* TODO: Implement Score submission */ },
+                onPressed: () => _showScoreBottomSheet(context, applicantId),
               );
             }).toList(),
           ),
@@ -163,6 +164,67 @@ class _SupervisorRoomCard extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showScoreBottomSheet(BuildContext context, int applicantId) {
+  final scoreController = TextEditingController();
+  final remarkController = TextEditingController();
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
+          child: Container(
+            color: Colors.green.shade100,
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Submit Score', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: scoreController,
+                  decoration: const InputDecoration(
+                    labelText: 'Score',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: remarkController,
+                  decoration: const InputDecoration(
+                    labelText: 'Remark',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    // TODO: Implement score submission logic
+                    final score = scoreController.text;
+                    final remark = remarkController.text;
+                    debugPrint('Submitting for applicant $applicantId: Score=$score, Remark=$remark');
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Submit'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 Widget _buildCard({String? title, required List<Widget> children}) {
