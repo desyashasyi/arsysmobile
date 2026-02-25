@@ -44,4 +44,13 @@ class FinalDefenseRepository {
       throw Exception('Failed to load room detail (${response.statusCode})');
     }
   }
+
+  Future<List<dynamic>> getScoreGuide() async {
+    final response = await _authService.get('/staff/final-defense/score-guide');
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load score guide');
+    }
+  }
 }

@@ -15,3 +15,8 @@ final finalDefenseRoomDetailProvider = FutureProvider.autoDispose.family<Map<Str
   final repository = ref.watch(finalDefenseRepositoryProvider);
   return repository.getRoomDetail(roomId);
 });
+
+final finalDefenseScoreGuideProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final repository = ref.watch(finalDefenseRepositoryProvider);
+  return repository.getScoreGuide();
+});
