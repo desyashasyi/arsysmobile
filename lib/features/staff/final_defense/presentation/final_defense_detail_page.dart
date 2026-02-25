@@ -59,6 +59,7 @@ class _ExaminerRoomCard extends StatelessWidget {
     final moderator = room['moderator'] as Map<String, dynamic>?;
     final examiners = room['examiners'] as List<dynamic>? ?? [];
     final applicants = room['applicants'] as List<dynamic>? ?? [];
+    final supervisedApplicantIds = (room['supervised_applicant_ids'] as List).cast<int>();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -86,7 +87,6 @@ class _ExaminerRoomCard extends StatelessWidget {
               if (moderator != null) ...[
                 _buildPersonRow(
                   name: '${moderator['name']} (${moderator['code']})',
-                  isPresent: true, // Moderator is always present
                   isModerator: true,
                 ),
                 const Divider(),
@@ -104,9 +104,13 @@ class _ExaminerRoomCard extends StatelessWidget {
             title: 'Participants',
             children: applicants.map((a) {
               final applicant = a as Map<String, dynamic>;
+              final applicantId = applicant['id'] as int;
+              final bool isSupervised = supervisedApplicantIds.contains(applicantId);
+
               return _buildParticipantRow(
                 name: '${applicant['student_name']} (${applicant['student_nim']})',
                 onPressed: () { /* TODO: Implement Score submission */ },
+                showScoreButton: !isSupervised,
               );
             }).toList(),
           ),
@@ -178,7 +182,7 @@ Widget _buildCard({String? title, required List<Widget> children}) {
   );
 }
 
-Widget _buildPersonRow({required String name, required bool isPresent, bool isModerator = false}) {
+Widget _buildPersonRow({required String name, bool isPresent = false, bool isModerator = false}) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 4.0),
     child: Row(
@@ -192,27 +196,31 @@ Widget _buildPersonRow({required String name, required bool isPresent, bool isMo
             padding: EdgeInsets.zero,
           ),
         ],
-        const SizedBox(width: 8),
-        Icon(
-          Icons.check_circle,
-          color: isPresent ? Colors.green : Colors.grey.shade300,
-        ),
+        if (!isModerator) ...[
+          const SizedBox(width: 8),
+          Icon(
+            Icons.check_circle,
+            color: isPresent ? Colors.green : Colors.grey.shade300,
+          ),
+        ]
       ],
     ),
   );
 }
 
-Widget _buildParticipantRow({required String name, required VoidCallback onPressed}) {
+Widget _buildParticipantRow({required String name, required VoidCallback onPressed, bool showScoreButton = true}) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 4.0),
     child: Row(
       children: [
         Expanded(child: Text(name)),
-        const SizedBox(width: 8),
-        ElevatedButton(
-          onPressed: onPressed,
-          child: const Text('Score'),
-        ),
+        if (showScoreButton) ...[
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: onPressed,
+            child: const Text('Score'),
+          ),
+        ]
       ],
     ),
   );
