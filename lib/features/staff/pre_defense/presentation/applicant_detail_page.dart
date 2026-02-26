@@ -279,9 +279,12 @@ class ApplicantDetailPage extends ConsumerWidget {
         title: Text(name),
         subtitle: Text(code),
         trailing: isSupervisor
-            ? Checkbox(
-                value: isPresent,
-                onChanged: (bool? value) async {
+            ? IconButton(
+                icon: Icon(
+                  Icons.check_circle,
+                  color: isPresent ? Colors.green : Colors.grey.shade300,
+                ),
+                onPressed: () async {
                   try {
                     await ref.read(preDefenseRepositoryProvider).toggleExaminerPresence(examinerId);
                     ref.invalidate(preDefenseParticipantDetailProvider(participantId));
@@ -291,6 +294,7 @@ class ApplicantDetailPage extends ConsumerWidget {
                     }
                   }
                 },
+                tooltip: 'Toggle Presence',
               )
             : Icon(
                 Icons.check_circle,
