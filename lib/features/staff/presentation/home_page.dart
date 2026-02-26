@@ -69,6 +69,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: ConvexAppBar(
         style: TabStyle.react,
+        backgroundColor: Colors.purple[500],
         items: const [
           TabItem(icon: Icons.supervisor_account, title: 'Supervise'),
           TabItem(icon: Icons.checklist, title: 'Review'),

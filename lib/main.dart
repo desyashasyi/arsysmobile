@@ -14,7 +14,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Arsys',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.purple,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.purple[200],
+        ),
       ),
       home: const SplashScreen(),
     );

@@ -119,7 +119,7 @@ class ApplicantDetailPage extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.green[100],
+      backgroundColor: Colors.purple[100],
       builder: (context) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: AddExaminerSheet(participantId: participantId),
@@ -131,7 +131,7 @@ class ApplicantDetailPage extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.green[100],
+      backgroundColor: Colors.purple[100],
       builder: (context) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: SubmitScoreSheet(participantId: participantId, data: data),
@@ -143,7 +143,7 @@ class ApplicantDetailPage extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.green[100],
+      backgroundColor: Colors.purple[50],
       builder: (context) => const ScoreGuideSheet(),
     );
   }

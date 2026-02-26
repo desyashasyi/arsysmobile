@@ -272,7 +272,7 @@ void _showScoreBottomSheet(BuildContext context, WidgetRef ref, int eventId, int
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
           child: Container(
-            color: Colors.green.shade100,
+            color: Colors.purple[100],
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -367,6 +367,7 @@ void _showScoreGuideBottomSheet(BuildContext context) {
       return ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20.0)),
         child: Container(
+          color: Colors.purple[50],
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
