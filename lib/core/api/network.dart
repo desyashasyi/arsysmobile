@@ -8,7 +8,9 @@ final networkClientProvider = Provider<NetworkClient>((ref) {
 
 class NetworkClient {
   final Ref _ref;
-  final String _baseUrl = 'http://127.0.0.1:8000/api';
+
+  final String _baseUrl = 'http://192.168.100.26/api';
+  //final String _baseUrl = 'http://127.0.0.1:8000/api';
 
   NetworkClient(this._ref);
 

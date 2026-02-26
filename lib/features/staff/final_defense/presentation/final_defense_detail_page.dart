@@ -40,7 +40,7 @@ class FinalDefenseDetailPage extends ConsumerWidget {
                   const SizedBox(height: 16),
                   const Text("Supervised Students", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ...supervisorRooms.map((room) => _SupervisorRoomCard(room: room as Map<String, dynamic>)),
+                  ...supervisorRooms.map((room) => _SupervisorRoomCard(room: room as Map<String, dynamic>, eventId: eventId)),
                 ]
               ],
             ),
@@ -181,11 +181,14 @@ class _ExaminerRoomCard extends ConsumerWidget {
               final applicantId = applicant['id'] as int;
               final studentName = applicant['student_name'] as String? ?? '';
               final studentNim = applicant['student_nim'] as String? ?? '';
+              final myScore = applicant['my_score'];
+              final myRemark = applicant['my_remark'] as String?;
               final bool isSupervised = supervisedApplicantIds.contains(applicantId);
 
               return _buildParticipantRow(
                 name: '$studentName ($studentNim)',
-                onPressed: () => _showScoreBottomSheet(context, applicantId, studentName, studentNim),
+                myScore: myScore,
+                onPressed: () => _showScoreBottomSheet(context, ref, eventId, applicantId, studentName, studentNim, myScore, myRemark),
                 showScoreButton: !isSupervised,
               );
             }).toList(),
@@ -196,12 +199,13 @@ class _ExaminerRoomCard extends ConsumerWidget {
   }
 }
 
-class _SupervisorRoomCard extends StatelessWidget {
+class _SupervisorRoomCard extends ConsumerWidget {
   final Map<String, dynamic> room;
-  const _SupervisorRoomCard({required this.room});
+  final int eventId;
+  const _SupervisorRoomCard({required this.room, required this.eventId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final supervisedApplicantIds = (room['supervised_applicant_ids'] as List).cast<int>();
     final applicants = (room['applicants'] as List<dynamic>? ?? [])
         .where((a) => supervisedApplicantIds.contains(a['id']))
@@ -232,9 +236,12 @@ class _SupervisorRoomCard extends StatelessWidget {
               final applicantId = applicant['id'] as int;
               final studentName = applicant['student_name'] as String? ?? '';
               final studentNim = applicant['student_nim'] as String? ?? '';
+              final myScore = applicant['my_score'];
+              final myRemark = applicant['my_remark'] as String?;
               return _buildParticipantRow(
                 name: '$studentName ($studentNim)',
-                onPressed: () => _showScoreBottomSheet(context, applicantId, studentName, studentNim),
+                myScore: myScore,
+                onPressed: () => _showScoreBottomSheet(context, ref, eventId, applicantId, studentName, studentNim, myScore, myRemark),
               );
             }).toList(),
           ),
@@ -244,9 +251,14 @@ class _SupervisorRoomCard extends StatelessWidget {
   }
 }
 
-void _showScoreBottomSheet(BuildContext context, int applicantId, String studentName, String studentNim) {
-  final scoreController = TextEditingController();
-  final remarkController = TextEditingController();
+void _showScoreBottomSheet(BuildContext context, WidgetRef ref, int eventId, int applicantId, String studentName, String studentNim, dynamic myScore, String? myRemark) {
+  final scoreController = TextEditingController(text: (myScore != null && myScore != -1) ? myScore.toString() : '');
+  final remarkController = TextEditingController(text: myRemark);
+
+  final ovalBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(24),
+    borderSide: const BorderSide(color: Colors.grey),
+  );
 
   showModalBottomSheet(
     context: context,
@@ -280,18 +292,22 @@ void _showScoreBottomSheet(BuildContext context, int applicantId, String student
                 const SizedBox(height: 16),
                 TextField(
                   controller: scoreController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Score',
-                    border: OutlineInputBorder(),
+                    border: ovalBorder,
+                    focusedBorder: ovalBorder,
+                    enabledBorder: ovalBorder,
                   ),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: remarkController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Remark',
-                    border: OutlineInputBorder(),
+                    border: ovalBorder,
+                    focusedBorder: ovalBorder,
+                    enabledBorder: ovalBorder,
                   ),
                   maxLines: 3,
                 ),
@@ -304,12 +320,28 @@ void _showScoreBottomSheet(BuildContext context, int applicantId, String student
                       child: const Text('Scoring Guide'),
                     ),
                     ElevatedButton(
-                      onPressed: () {
-                        // TODO: Implement score submission logic
-                        final score = scoreController.text;
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(context);
+                        final score = int.tryParse(scoreController.text);
                         final remark = remarkController.text;
-                        debugPrint('Submitting for applicant $applicantId: Score=$score, Remark=$remark');
-                        Navigator.of(context).pop();
+
+                        if (score == null) {
+                          messenger.showSnackBar(const SnackBar(content: Text('Please enter a valid score.'), backgroundColor: Colors.red));
+                          return;
+                        }
+
+                        messenger.showSnackBar(const SnackBar(content: Text('Submitting score...')));
+                        try {
+                          await ref.read(finalDefenseRepositoryProvider).submitScore(applicantId, score, remark);
+                          messenger.hideCurrentSnackBar();
+                          messenger.showSnackBar(const SnackBar(content: Text('Score submitted successfully! Refreshing...'), backgroundColor: Colors.green));
+                          navigator.pop();
+                          ref.refresh(finalDefenseDetailProvider(eventId));
+                        } catch (e) {
+                          messenger.hideCurrentSnackBar();
+                          messenger.showSnackBar(SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red));
+                        }
                       },
                       child: const Text('Submit'),
                     ),
@@ -482,7 +514,17 @@ Widget _buildPersonRow({
   );
 }
 
-Widget _buildParticipantRow({required String name, required VoidCallback onPressed, bool showScoreButton = true}) {
+Widget _buildParticipantRow({
+  required String name,
+  required VoidCallback onPressed,
+  dynamic myScore,
+  bool showScoreButton = true,
+}) {
+  String buttonText = 'Score';
+  if (myScore != null && myScore != -1) {
+    buttonText = myScore.toString();
+  }
+
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 4.0),
     child: Row(
@@ -494,7 +536,7 @@ Widget _buildParticipantRow({required String name, required VoidCallback onPress
           const SizedBox(width: 8),
           ElevatedButton(
             onPressed: onPressed,
-            child: const Text('Score'),
+            child: Text(buttonText),
           ),
         ]
       ],

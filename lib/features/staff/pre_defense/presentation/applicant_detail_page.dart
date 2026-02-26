@@ -498,6 +498,11 @@ class _SubmitScoreSheetState extends ConsumerState<SubmitScoreSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final ovalBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(24),
+      borderSide: const BorderSide(color: Colors.grey),
+    );
+
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 60.0),
@@ -509,9 +514,11 @@ class _SubmitScoreSheetState extends ConsumerState<SubmitScoreSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _scoreController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Score (1-400)',
-                border: OutlineInputBorder(),
+                border: ovalBorder,
+                focusedBorder: ovalBorder,
+                enabledBorder: ovalBorder,
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [
@@ -522,10 +529,13 @@ class _SubmitScoreSheetState extends ConsumerState<SubmitScoreSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _remarkController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Remark',
-                border: OutlineInputBorder(),
+                border: ovalBorder,
+                focusedBorder: ovalBorder,
+                enabledBorder: ovalBorder,
               ),
+              maxLines: 3,
             ),
             const SizedBox(height: 16),
             Align(

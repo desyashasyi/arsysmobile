@@ -67,6 +67,30 @@ class FinalDefenseRepository {
     }
   }
 
+  Future<void> submitScore(int applicantId, int score, String? remark) async {
+    final response = await _authService.post(
+      '/staff/final-defense/applicant/$applicantId/score',
+      {
+        'score': score,
+        'remark': remark,
+      },
+    );
+    if (response.statusCode != 200) {
+      try {
+        final error = json.decode(response.body);
+        final message = error['message'] ?? 'An unknown error occurred.';
+        if (error.containsKey('errors')) {
+          final errors = error['errors'] as Map<String, dynamic>;
+          final firstError = errors.values.first as List<dynamic>;
+          throw Exception(firstError.first ?? message);
+        }
+        throw Exception(message);
+      } catch (e) {
+        throw Exception('Failed to submit score. Please try again.');
+      }
+    }
+  }
+
   Future<Map<String, dynamic>> getRoomDetail(int roomId) async {
     final response = await _authService.get('/staff/final-defense/room/$roomId');
     if (response.statusCode == 200) {
