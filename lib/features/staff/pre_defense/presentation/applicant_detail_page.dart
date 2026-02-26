@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:arsys/features/staff/pre_defense/application/pre_defense_provider.dart';
 import 'package:arsys/features/staff/pre_defense/data/pre_defense_repository.dart';
+import 'package:top_snackbar_flutter/custom_snack_bar.dart';
+import 'package:top_snackbar_flutter/top_snack_bar.dart';
 
 class ApplicantDetailPage extends ConsumerWidget {
   final int participantId;
@@ -489,9 +491,13 @@ class _SubmitScoreSheetState extends ConsumerState<SubmitScoreSheet> {
       await ref.read(preDefenseRepositoryProvider).submitScore(widget.participantId, score, remark: remark);
       ref.invalidate(preDefenseParticipantDetailProvider(widget.participantId));
       if (mounted) {
-        _showAlertDialog(context, 'Success', 'Score submitted successfully', onOk: () {
-          Navigator.of(context).pop();
-        });
+        showTopSnackBar(
+          Overlay.of(context),
+          const CustomSnackBar.success(
+            message: "Score submitted successfully",
+          ),
+        );
+        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {

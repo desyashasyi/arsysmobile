@@ -69,7 +69,7 @@ class FinalDefenseRepository {
 
   Future<void> submitScore(int applicantId, int score, String? remark) async {
     final response = await _authService.post(
-      '/staff/final-defense/applicant/$applicantId/score',
+      '/final-defense/applicant/$applicantId/score',
       {
         'score': score,
         'remark': remark,

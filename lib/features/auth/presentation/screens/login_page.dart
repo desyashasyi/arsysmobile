@@ -4,6 +4,7 @@ import 'package:arsys/features/student/presentation/screens/student_home_page.da
 import 'package:flutter/material.dart';
 import 'package:flutter_login/flutter_login.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
@@ -22,7 +23,13 @@ class LoginPage extends ConsumerWidget {
   }
 
   Future<String?> _recoverPassword(String name) {
-    return Future.value('Password recovery is not available.');
+    // This is not used but required by the package.
+    return Future.value(null);
+  }
+
+  Future<String?> _signupUser(SignupData data) {
+    // This is not used but required by the package.
+    return Future.value(null);
   }
 
   @override
@@ -30,8 +37,21 @@ class LoginPage extends ConsumerWidget {
     return FlutterLogin(
       title: 'ArSys',
       onLogin: (data) => _loginUser(data, ref),
-      onSignup: (_) => Future.value('Signup is not available for now.'),
+      onSignup: _signupUser,
       onRecoverPassword: _recoverPassword,
+      hideForgotPasswordButton: true,
+      theme: LoginTheme(
+        switchAuthTextColor: Colors.transparent,
+      ),
+      loginProviders: [
+        LoginProvider(
+          icon: FontAwesomeIcons.google,
+          callback: () {
+            // TODO: Implement Google Sign-In
+            return Future.value('Google Sign-In is not implemented yet.');
+          },
+        ),
+      ],
       onSubmitAnimationCompleted: () {
         final userRole = ref.read(userRoleProvider);
 

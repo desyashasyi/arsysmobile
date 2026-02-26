@@ -490,7 +490,7 @@ Widget _buildPersonRow({
           const SizedBox(width: 8),
           Chip(
             label: const Text('Moderator'),
-            backgroundColor: Colors.blue.shade100,
+            backgroundColor: Colors.purple[100],
             padding: EdgeInsets.zero,
           ),
         ],
